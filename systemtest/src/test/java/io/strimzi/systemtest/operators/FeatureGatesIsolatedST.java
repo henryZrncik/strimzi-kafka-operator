@@ -12,6 +12,11 @@ import io.strimzi.api.kafka.model.KafkaConnectResources;
 import io.strimzi.api.kafka.model.KafkaResources;
 import io.strimzi.api.kafka.model.listener.arraylistener.GenericKafkaListenerBuilder;
 import io.strimzi.api.kafka.model.listener.arraylistener.KafkaListenerType;
+import io.strimzi.api.kafka.model.nodepool.KafkaNodePool;
+import io.strimzi.api.kafka.model.nodepool.KafkaNodePoolBuilder;
+import io.strimzi.api.kafka.model.nodepool.ProcessRoles;
+import io.strimzi.api.kafka.model.storage.JbodStorageBuilder;
+import io.strimzi.api.kafka.model.storage.PersistentClaimStorageBuilder;
 import io.strimzi.operator.common.Annotations;
 import io.strimzi.systemtest.AbstractST;
 import io.strimzi.systemtest.BeforeAllOnce;
@@ -245,5 +250,86 @@ public class FeatureGatesIsolatedST extends AbstractST {
         final String connectorPodName = kubeClient().listPodsByPrefixInName(testStorage.getNamespaceName(), testStorage.getClusterName() + "-connect").get(0).getMetadata().getName();
 
         KafkaConnectUtils.waitForMessagesInKafkaConnectFileSink(testStorage.getNamespaceName(), connectorPodName, Constants.DEFAULT_SINK_FILE_PATH, "\"Hello-world - 499\"");
+    }
+
+    @IsolatedTest
+    void testDeployAndUseKafkaWithKafkaNodePoolsFeatureGate(ExtensionContext extensionContext) {
+        assumeFalse(Environment.isOlmInstall());
+        assumeFalse(Environment.isHelmInstall());
+
+        final TestStorage testStorage = new TestStorage(extensionContext);
+
+        List<EnvVar> coEnvVars = new ArrayList<>();
+        coEnvVars.add(new EnvVar(Environment.STRIMZI_FEATURE_GATES_ENV, "+UseKRaft,+KafkaNodePools", null));
+
+        LOGGER.info("Deploying CO with feature Gates: +UseKRaft,+KafkaNodePools");
+        clusterOperator.unInstall();
+        clusterOperator = new SetupClusterOperator.SetupClusterOperatorBuilder()
+            .withExtensionContext(BeforeAllOnce.getSharedExtensionContext())
+            .withNamespace(testStorage.getNamespaceName())
+            .withWatchingNamespaces(Constants.WATCH_ALL_NAMESPACES)
+            .withExtraEnvVars(coEnvVars)
+            .createInstallation()
+            .runInstallation();
+
+        KafkaClients clients = new KafkaClientsBuilder()
+            .withProducerName(testStorage.getProducerName())
+            .withConsumerName(testStorage.getConsumerName())
+            .withBootstrapAddress(KafkaResources.plainBootstrapAddress(testStorage.getClusterName()))
+            .withTopicName(testStorage.getTopicName())
+            .withMessageCount(testStorage.getMessageCount())
+            .withDelayMs(500)
+            .withNamespaceName(clusterOperator.getDeploymentNamespace())
+            .build();
+
+//
+//        //TODO deploy also KafkaNodePool
+//        resourceManager.createResource(extensionContext, false, new KafkaNodePoolBuilder()
+//            .editOrNewMetadata()
+//                .addToLabels("strimzi.io/cluster", testStorage.getClusterName())
+//            .endMetadata()
+//            .editOrNewSpec()
+//                .addToRoles(0, ProcessRoles.BROKER)
+//                .withReplicas(3)
+//                .withStorage(new JbodStorageBuilder().withVolumes(
+//                        new PersistentClaimStorageBuilder()
+//                            .withDeleteClaim(true)
+//                            .withId(0)
+//                            .withSize("5Gi")
+//                            .build())
+//                    .build())
+//            .endSpec()
+//            .build());
+
+//                    .editSpec()
+//            .editKafka()
+//            .withVersion(Environment.ST_KAFKA_VERSION)
+//            .withReplicas(kafkaReplicas)
+
+
+
+        LOGGER.info("Deploying Kafka: {}/{} with mandatory label strimzi.io/node-pools=enabled, replica, and storage specification", testStorage.getNamespaceName(), testStorage.getClusterName());
+        Kafka kafka =  KafkaTemplates.kafkaPersistent(testStorage.getClusterName(), 3, 1)
+            .editOrNewMetadata()
+            .addToAnnotations("strimzi.io/node-pools", "enabled")
+            .endMetadata()
+            .editOrNewSpec()
+            .editOrNewKafka()
+            .withStorage(new JbodStorageBuilder().withVolumes(
+                    new PersistentClaimStorageBuilder()
+                        .withDeleteClaim(false)
+                        .withId(0)
+                        .withSize("5Gi")
+                        .build())
+                .build())
+            .endKafka()
+            .endSpec()
+            .build();
+
+// TO not supported when using kraft.
+        kafka.getSpec().getEntityOperator().setTopicOperator(null);
+
+        resourceManager.createResource(extensionContext, kafka);
+        resourceManager.createResource(extensionContext, clients.producerStrimzi(), clients.consumerStrimzi());
     }
 }

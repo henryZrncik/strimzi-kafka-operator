@@ -265,6 +265,14 @@ public class Environment {
     }
 
     /**
+     * Determine wheter KafkaNodePools mode is enabled in ClusterOperator or not.
+     * @return true if KafkaNodePools mode is enabled, otherwise false
+     */
+    public static boolean isKafkaNodePoolsModeEnabled() {
+        return STRIMZI_FEATURE_GATES.contains(Constants.USE_KAFKA_NODE_POOLS_MODE);
+    }
+
+    /**
      * Provides boolean information, if testing environment support shared memory (i.e., environment, where all
      * components share memory). In general, we use {@link Environment#RESOURCE_ALLOCATION_STRATEGY_DEFAULT} if env {@link Environment#RESOURCE_ALLOCATION_STRATEGY_ENV}
      * is not specified.
