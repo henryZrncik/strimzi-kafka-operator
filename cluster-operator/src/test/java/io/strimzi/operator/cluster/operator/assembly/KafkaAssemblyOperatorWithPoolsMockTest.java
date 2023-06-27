@@ -96,7 +96,7 @@ public class KafkaAssemblyOperatorWithPoolsMockTest {
                 .withNewMetadata()
                     .withName(CLUSTER_NAME)
                     .withNamespace(NAMESPACE)
-                    .withAnnotations(Map.of(KafkaCluster.ANNO_STRIMZI_IO_NODE_POOLS, "enabled"))
+                    .withAnnotations(Map.of(Annotations.ANNO_STRIMZI_IO_NODE_POOLS, "enabled"))
                 .endMetadata()
                 .withNewSpec()
                     .withNewKafka()
