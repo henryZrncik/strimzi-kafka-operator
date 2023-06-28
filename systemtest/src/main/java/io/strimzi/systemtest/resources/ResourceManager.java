@@ -80,10 +80,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import static io.strimzi.operator.common.Util.hashStub;
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -102,6 +104,7 @@ public class ResourceManager {
 
     private static String coDeploymentName = Constants.STRIMZI_DEPLOYMENT_NAME;
     private static ResourceManager instance;
+    private static final Random RANDOM = new Random();
 
     public static synchronized ResourceManager getInstance() {
         if (instance == null) {
@@ -240,7 +243,9 @@ public class ResourceManager {
                 nodeRoles.add(ProcessRoles.CONTROLLER);
             }
 
-            KafkaNodePool nodePool = KafkaNodePoolTemplates.defaultKafkaNodePool(resource.getMetadata().getName() + "-pool", resource.getMetadata().getName(), resource.getSpec().getKafka().getReplicas())
+            String nodePoolName = Constants.KAFKA_NODE_POOL_PREFIX + hashStub(resource.getMetadata().getName());
+
+            KafkaNodePool nodePool = KafkaNodePoolTemplates.defaultKafkaNodePool(nodePoolName, resource.getMetadata().getName(), resource.getSpec().getKafka().getReplicas())
                 .editOrNewMetadata()
                     .withNamespace(resource.getMetadata().getNamespace())
                 .endMetadata()

@@ -12,6 +12,8 @@ import io.strimzi.api.kafka.model.nodepool.KafkaNodePool;
 import io.strimzi.systemtest.resources.ResourceManager;
 import io.strimzi.systemtest.resources.ResourceType;
 
+import java.util.function.Consumer;
+
 public class KafkaNodePoolResource implements ResourceType<KafkaNodePool> {
 
     @Override
@@ -41,5 +43,9 @@ public class KafkaNodePoolResource implements ResourceType<KafkaNodePool> {
 
     public static MixedOperation<KafkaNodePool, KafkaNodePoolList, Resource<KafkaNodePool>> kafkaNodePoolClient() {
         return Crds.kafkaNodePoolOperation(ResourceManager.kubeClient().getClient());
+    }
+
+    public static void replaceKafkaNodePoolResourceInSpecificNamespace(String resourceName, Consumer<KafkaNodePool> editor, String namespaceName) {
+        ResourceManager.replaceCrdResource(KafkaNodePool.class, KafkaNodePoolList.class, resourceName, editor, namespaceName);
     }
 }
