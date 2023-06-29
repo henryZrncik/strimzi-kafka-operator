@@ -10,9 +10,11 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.strimzi.api.kafka.model.Kafka;
 import io.strimzi.api.kafka.model.KafkaConnectResources;
 import io.strimzi.api.kafka.model.KafkaResources;
+import io.strimzi.api.kafka.model.StrimziPodSet;
 import io.strimzi.api.kafka.model.listener.arraylistener.GenericKafkaListenerBuilder;
 import io.strimzi.api.kafka.model.listener.arraylistener.KafkaListenerType;
 import io.strimzi.operator.common.Annotations;
+import io.strimzi.operator.common.Util;
 import io.strimzi.systemtest.AbstractST;
 import io.strimzi.systemtest.Constants;
 import io.strimzi.systemtest.Environment;
@@ -33,6 +35,7 @@ import io.strimzi.systemtest.utils.RollingUpdateUtils;
 import io.strimzi.systemtest.utils.kafkaUtils.KafkaConnectUtils;
 import io.strimzi.systemtest.utils.kafkaUtils.KafkaConnectorUtils;
 import io.strimzi.systemtest.utils.kubeUtils.controllers.DeploymentUtils;
+import io.strimzi.systemtest.utils.kubeUtils.controllers.StrimziPodSetUtils;
 import io.strimzi.systemtest.utils.kubeUtils.objects.PodUtils;
 import io.strimzi.test.annotations.IsolatedTest;
 import org.apache.logging.log4j.LogManager;
@@ -41,6 +44,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -254,5 +258,79 @@ public class FeatureGatesIsolatedST extends AbstractST {
 
         LOGGER.info("Verifying that KafkaConnector is able to sink the messages to the file-sink file");
         KafkaConnectUtils.waitForMessagesInKafkaConnectFileSink(testStorage.getNamespaceName(), connectorPodName, Constants.DEFAULT_SINK_FILE_PATH, "Hello-world");
+    }
+
+    /**
+     * @description This test case verifies basic working of Kafka Cluster managed by Cluster Operator with kafkaNodePool feature gate enabled.
+     *
+     * @steps
+     *  1. - Deploy Kafka with annotated to enable management by KafkaNodePool, and KafkaNodePool targeting given Kafka Cluster.
+     *     - Kafka is deployed, KafkaNodePool custom resource is targeting Kafka Cluster as expected.
+     *  2. - Produce and consume messages in given Kafka Cluster.
+     *     - Clients can produce and consume messages.
+     *  3. - Trigger manual Rolling Update.
+     *     - Rolling update is triggered and completed shortly after.
+     *
+     * @usecase
+     *  - kafka-node-pool
+     */
+    @IsolatedTest
+    void testKafkaNodePoolFeatureGate(ExtensionContext extensionContext) {
+        assumeFalse(Environment.isOlmInstall());
+        assumeFalse(Environment.isHelmInstall());
+
+        String clusterOperatorName =  ResourceManager.getCoDeploymentName();
+        final TestStorage testStorage = new TestStorage(extensionContext, INFRA_NAMESPACE);
+
+        List<EnvVar> coEnvVars = new ArrayList<>();
+        coEnvVars.add(new EnvVar(Environment.STRIMZI_FEATURE_GATES_ENV, "+KafkaNodePools", null));
+        if (Environment.isKRaftModeEnabled()) {
+            coEnvVars.add(new EnvVar(Environment.STRIMZI_FEATURE_GATES_ENV, "+UseKRaft,+KafkaNodePools", null));
+        }
+
+        clusterOperator.unInstall();
+        LOGGER.info("Deploying CO: {}/{} with feature Gates: {}", clusterOperatorName, testStorage.getNamespaceName(), coEnvVars.toString());
+        clusterOperator = new SetupClusterOperator.SetupClusterOperatorBuilder()
+            .withExtensionContext(extensionContext)
+            .withNamespace(testStorage.getNamespaceName())
+            .withWatchingNamespaces(Constants.WATCH_ALL_NAMESPACES)
+            .withClusterOperatorName(clusterOperatorName)
+            .withExtraEnvVars(coEnvVars)
+            .createInstallation()
+            .runInstallation();
+
+        LOGGER.info("Deploying Kafka Cluster: {}/{}", testStorage.getNamespaceName(), testStorage.getClusterName());
+        resourceManager.createResource(extensionContext, KafkaTemplates.kafkaPersistent(testStorage.getClusterName(), 3, 1)
+            .editOrNewMetadata()
+            .withAnnotations(Map.of(Annotations.ANNO_STRIMZI_IO_NODE_POOLS, "enabled"))
+            .endMetadata()
+            .build());
+
+        // setup clients
+        KafkaClients clients = new KafkaClientsBuilder()
+            .withProducerName(testStorage.getProducerName())
+            .withConsumerName(testStorage.getConsumerName())
+            .withBootstrapAddress(KafkaResources.plainBootstrapAddress(testStorage.getClusterName()))
+            .withTopicName(testStorage.getTopicName())
+            .withMessageCount(testStorage.getMessageCount())
+            .withDelayMs(500)
+            .withNamespaceName(clusterOperator.getDeploymentNamespace())
+            .build();
+
+        LOGGER.info("Producing and Consuming messages with clients: {}, {} in Namespace {}", testStorage.getProducerName(), testStorage.getConsumerName(), testStorage.getNamespaceName());
+        resourceManager.createResource(extensionContext,
+            clients.producerStrimzi(),
+            clients.consumerStrimzi()
+        );
+        ClientUtils.waitForClientsSuccess(testStorage);
+
+        // snapshot Kafka Pods before triggering manual rolling update.
+        final LabelSelector kafkaSelector = KafkaResource.getLabelSelector(testStorage.getClusterName(), KafkaResources.kafkaStatefulSetName(testStorage.getClusterName()));
+        Map<String, String> kafkaPods = PodUtils.podSnapshot(testStorage.getNamespaceName(), kafkaSelector);
+
+        LOGGER.info("Annotating {} of Kafka Cluster: {}/{} with manual rolling update annotation", StrimziPodSet.RESOURCE_KIND, testStorage.getNamespaceName(), testStorage.getClusterName());
+        StrimziPodSetUtils.annotateStrimziPodSet(testStorage.getNamespaceName(), testStorage.getClusterName() + "-" + Constants.KAFKA_NODE_POOL_PREFIX + Util.hashStub(testStorage.getClusterName()), Collections.singletonMap(Annotations.ANNO_STRIMZI_IO_MANUAL_ROLLING_UPDATE, "true"));
+        RollingUpdateUtils.waitTillComponentHasRolled(testStorage.getNamespaceName(), kafkaSelector, 3, kafkaPods);
+
     }
 }
