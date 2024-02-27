@@ -14,7 +14,6 @@ import io.strimzi.systemtest.annotations.IsolatedTest;
 import io.strimzi.systemtest.annotations.MicroShiftNotSupported;
 import io.strimzi.systemtest.annotations.RequiredMinKubeApiVersion;
 import io.strimzi.systemtest.kafkaclients.internalClients.KafkaClients;
-import io.strimzi.systemtest.kafkaclients.internalClients.KafkaClientsBuilder;
 import io.strimzi.systemtest.resources.NodePoolsConverter;
 import io.strimzi.systemtest.resources.ResourceManager;
 import io.strimzi.systemtest.resources.draincleaner.SetupDrainCleaner;
@@ -76,19 +75,13 @@ public class DrainCleanerST extends AbstractST {
         resourceManager.createResourceWithWait(KafkaTopicTemplates.topic(testStorage.getClusterName(), testStorage.getTopicName(), TestConstants.DRAIN_CLEANER_NAMESPACE).build());
         drainCleaner.createDrainCleaner();
 
-        KafkaClients kafkaBasicExampleClients = new KafkaClientsBuilder()
-            .withMessageCount(300)
-            .withTopicName(testStorage.getTopicName())
+        KafkaClients continuousClients = ClientUtils.getContinuousPlainClientBuilder(testStorage)
             .withNamespaceName(TestConstants.DRAIN_CLEANER_NAMESPACE)
-            .withBootstrapAddress(KafkaResources.plainBootstrapAddress(testStorage.getClusterName()))
-            .withProducerName(testStorage.getProducerName())
-            .withConsumerName(testStorage.getConsumerName())
-            .withDelayMs(1000)
             .build();
 
         resourceManager.createResourceWithWait(
-            kafkaBasicExampleClients.producerStrimzi(),
-            kafkaBasicExampleClients.consumerStrimzi());
+            continuousClients.producerStrimzi(),
+            continuousClients.consumerStrimzi());
 
         List<String> brokerPods = kubeClient().listPodNames(TestConstants.DRAIN_CLEANER_NAMESPACE, testStorage.getBrokerSelector());
 
@@ -136,7 +129,7 @@ public class DrainCleanerST extends AbstractST {
             RollingUpdateUtils.waitTillComponentHasRolledAndPodsReady(TestConstants.DRAIN_CLEANER_NAMESPACE, testStorage.getBrokerSelector(), replicas, kafkaPod);
         }
 
-        ClientUtils.waitForClientsSuccess(testStorage.getProducerName(), testStorage.getConsumerName(), TestConstants.DRAIN_CLEANER_NAMESPACE, 300);
+        ClientUtils.waitForClientsSuccess(testStorage.getContinuousProducerName(), testStorage.getContinuousConsumerName(), TestConstants.DRAIN_CLEANER_NAMESPACE, testStorage.getContinuousMessageCount());
     }
 
     @AfterEach
