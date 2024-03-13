@@ -178,13 +178,11 @@ public class NetworkPoliciesST extends AbstractST {
 
         LOGGER.info("Initialize producers and consumers with access to the Kafka using plain and tls listeners");
         KafkaClients kafkaClientsWithAccessPlain = ClientUtils.getInstantPlainClientBuilder(testStorage)
-            .withUsername(testStorage.getUsername())
             .withProducerName(producerNameAccessedPlain)
             .withConsumerName(consumerNameAccessedPlain)
             .withTopicName(topicNameAccessedPlain)
             .build();
         KafkaClients kafkaClientsWithAccessTls = ClientUtils.getInstantTlsClientBuilder(testStorage)
-            .withUsername(testStorage.getUsername())
             .withProducerName(producerNameAccessedTls)
             .withConsumerName(consumerNameAccessedTls)
             .withTopicName(topicNameAccessedTls)
@@ -192,13 +190,11 @@ public class NetworkPoliciesST extends AbstractST {
 
         LOGGER.info("Initialize producers and consumers without access (denied) to the Kafka using plain and tls listeners");
         KafkaClients kafkaClientsWithoutAccessPlain = ClientUtils.getInstantPlainClientBuilder(testStorage)
-            .withUsername(testStorage.getUsername())
             .withProducerName(producerNameDeniedPlain)
             .withConsumerName(consumerNameDeniedPlain)
             .withTopicName(topicNameDeniedPlain)
             .build();
         KafkaClients kafkaClientsWithoutAccessTls = ClientUtils.getInstantTlsClientBuilder(testStorage)
-            .withUsername(testStorage.getUsername())
             .withProducerName(producerNameDeniedTls)
             .withConsumerName(consumerNameDeniedTls)
             .withTopicName(topicNameDeniedTls)
