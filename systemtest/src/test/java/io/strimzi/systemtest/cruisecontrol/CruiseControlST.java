@@ -41,6 +41,7 @@ import io.strimzi.systemtest.templates.crd.KafkaTemplates;
 import io.strimzi.systemtest.templates.crd.KafkaTopicTemplates;
 import io.strimzi.systemtest.templates.specific.AdminClientTemplates;
 import io.strimzi.systemtest.templates.specific.ScraperTemplates;
+import io.strimzi.systemtest.utils.AdminClientUtils;
 import io.strimzi.systemtest.utils.RollingUpdateUtils;
 import io.strimzi.systemtest.utils.VerificationUtils;
 import io.strimzi.systemtest.utils.kafkaUtils.KafkaRebalanceUtils;
@@ -123,13 +124,15 @@ public class CruiseControlST extends AbstractST {
                 "-Xmx200M", "-Xms128M", "-XX:+UseG1GC");
 
         resourceManager.createResourceWithWait(KafkaTopicTemplates.topic(testStorage).build());
-        final AdminClient localKafkaAdminClient = AdminClientTemplates.deployPlainAdminClient(
-            resourceManager,
-            testStorage.getNamespaceName(),
-            testStorage.getAdminName(),
-            KafkaResources.plainBootstrapAddress(testStorage.getClusterName())
+        resourceManager.createResourceWithWait(
+            AdminClientTemplates.plainAdminClient(
+                testStorage.getNamespaceName(),
+                testStorage.getAdminName(),
+                KafkaResources.plainBootstrapAddress(testStorage.getClusterName())
+            ).build()
         );
-        CruiseControlUtils.verifyThatCruiseControlTopicsArePresent(localKafkaAdminClient, defaultBrokerReplicaCount);
+        final AdminClient adminClient = AdminClientUtils.getConfiguredAdminClient(testStorage.getNamespaceName(), testStorage.getAdminName());
+        CruiseControlUtils.verifyThatCruiseControlTopicsArePresent(adminClient, defaultBrokerReplicaCount);
     }
 
     @IsolatedTest
