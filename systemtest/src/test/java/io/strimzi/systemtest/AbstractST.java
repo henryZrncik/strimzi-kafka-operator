@@ -16,6 +16,7 @@ import io.strimzi.systemtest.storage.TestStorage;
 import io.strimzi.systemtest.utils.StUtils;
 import io.strimzi.test.interfaces.TestSeparator;
 import io.strimzi.test.k8s.KubeClusterResource;
+import io.strimzi.test.logs.CollectorElement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.AfterAll;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static io.strimzi.systemtest.logs.TestExecutionWatcher.collectLogs;
 import static io.strimzi.systemtest.matchers.Matchers.logHasNoUnexpectedErrors;
 import static io.strimzi.test.k8s.KubeClusterResource.cmdKubeClient;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -170,6 +172,9 @@ public abstract class AbstractST implements TestSeparator {
         // does not proceed with the next method (i.e., afterEachMustExecute()). This ensures that if such problem happen
         // it will always execute the second method.
         try {
+            final String testClass = extensionContext.getRequiredTestClass().getName();
+            final String testMethod = extensionContext.getRequiredTestMethod().getName();
+            collectLogs(extensionContext, new CollectorElement(testClass, testMethod));
             // This method needs to be disabled for the moment, as it brings flakiness and is unstable due to regexes and current matcher checks.
             // Needs to be reworked on what errors to ignore. Better error logging should be added.
             //assertNoCoErrorsLogged(clusterOperator.getDeploymentNamespace(), storageMap.get(extensionContext).getTestExecutionTimeInSeconds());
