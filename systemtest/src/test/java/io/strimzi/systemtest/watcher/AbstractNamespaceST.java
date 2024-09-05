@@ -184,7 +184,7 @@ public abstract class AbstractNamespaceST extends AbstractST {
         for (Secret s : secretsOfSecondNamespace) {
             if (s.getMetadata().getName().equals(testStorage.getUsername())) {
                 LOGGER.info("Copying Secret: {} from Namespace: {} to Namespace: {}", s, PRIMARY_KAFKA_WATCHED_NAMESPACE, testStorage.getNamespaceName());
-                copySecret(s, testStorage.getNamespaceName(), testStorage.getUsername());
+                copySecret(testStorage.getNamespaceName(), s, testStorage.getUsername());
             }
         }
 
@@ -194,7 +194,7 @@ public abstract class AbstractNamespaceST extends AbstractST {
             kafkaClients.producerTlsStrimzi(PRIMARY_KAFKA_NAME),
             kafkaClients.consumerTlsStrimzi(PRIMARY_KAFKA_NAME)
         );
-        ClientUtils.waitForClientsSuccess(testStorage.getProducerName(), testStorage.getConsumerName(), testStorage.getNamespaceName(), testStorage.getMessageCount());
+        ClientUtils.waitForClientsSuccess(testStorage.getNamespaceName(), testStorage.getProducerName(), testStorage.getConsumerName(), testStorage.getMessageCount());
     }
 
     /**
@@ -273,7 +273,7 @@ public abstract class AbstractNamespaceST extends AbstractST {
         deployKafkaConnectorWithSink(extensionContext, kafkaConnectName);
     }
 
-    private void copySecret(Secret sourceSecret, String targetNamespace, String targetName) {
+    private void copySecret(String targetNamespace, Secret sourceSecret, String targetName) {
         Secret s = new SecretBuilder(sourceSecret)
             .withNewMetadata()
                 .withName(targetName)

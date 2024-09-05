@@ -44,13 +44,13 @@ public class RoleResource implements ResourceType<Role> {
         return resource != null && get(resource.getMetadata().getNamespace(), resource.getMetadata().getName()) != null;
     }
 
-    public static void role(String yamlPath, String namespace) {
-        LOGGER.info("Creating Role: {}/{}", namespace, yamlPath);
+    public static void role(String namespaceName, String yamlPath) {
+        LOGGER.info("Creating Role: {}/{}", namespaceName, yamlPath);
         Role role = getRoleFromYaml(yamlPath);
 
         ResourceManager.getInstance().createResourceWithWait(new RoleBuilder(role)
             .editMetadata()
-                .withNamespace(namespace)
+                .withNamespace(namespaceName)
             .endMetadata()
             .build());
     }

@@ -39,37 +39,39 @@ public class ImageBuild {
     /**
      * Build a specific image from passed Dockerfile and push it into internal registry.
      * It will use OpenShift build on OpenShift like clusters and Kaniko on other distributions.
-     * @param name Image name (it is also used as a name for all needed resources)
-     * @param namespace location where the build will happen
+     *
+     * @param namespaceName      location where the build will happen
+     * @param name           Image name (it is also used as a name for all needed resources)
      * @param dockerfilePath path to Dockerfile
-     * @param imageTag tag of the final image that will be pushed into internal registries
-     * @param baseImage used base image for the build
-     * @throws IOException  When reading from file - when file doesn't exist or cannot be opened
+     * @param imageTag       tag of the final image that will be pushed into internal registries
+     * @param baseImage      used base image for the build
+     * @throws IOException When reading from file - when file doesn't exist or cannot be opened
      */
-    public static void buildImage(String name, String namespace, String dockerfilePath, String imageTag, String baseImage) throws IOException {
+    public static void buildImage(String namespaceName, String name, String dockerfilePath, String imageTag, String baseImage) throws IOException {
         if (KubeClusterResource.getInstance().isOpenShiftLikeCluster()) {
-            buildImageOpenshift(name, namespace, dockerfilePath, imageTag, baseImage);
+            buildImageOpenshift(namespaceName, name, dockerfilePath, imageTag, baseImage);
         } else {
-            buildImageKaniko(name, namespace, dockerfilePath, imageTag, baseImage);
+            buildImageKaniko(namespaceName, name, dockerfilePath, imageTag, baseImage);
         }
     }
 
     /**
      * Build a specific image from passed Dockerfile and push it into internal registry.
-     * @param name Image name (it is also used as a name for all needed resources)
-     * @param namespace location where the build will happen
+     *
+     * @param namespaceName      location where the build will happen
+     * @param name           Image name (it is also used as a name for all needed resources)
      * @param dockerfilePath path to Dockerfile
-     * @param imageTag tag of the final image that will be pushed into internal registries
-     * @param baseImage used base image for the build
-     * @throws IOException  When reading from file - when file doesn't exist or cannot be opened
+     * @param imageTag       tag of the final image that will be pushed into internal registries
+     * @param baseImage      used base image for the build
+     * @throws IOException When reading from file - when file doesn't exist or cannot be opened
      */
-    public static void buildImageKaniko(String name, String namespace, String dockerfilePath, String imageTag, String baseImage) throws IOException {
-        createDockerfileConfigMap(namespace, name, dockerfilePath);
+    public static void buildImageKaniko(String namespaceName, String name, String dockerfilePath, String imageTag, String baseImage) throws IOException {
+        createDockerfileConfigMap(namespaceName, name, dockerfilePath);
 
         Job kanikoJob = new JobBuilder()
             .withNewMetadata()
                 .withName(name)
-                .withNamespace(namespace) // Change this to your namespace
+                .withNamespace(namespaceName) // Change this to your namespace
             .endMetadata()
             .withNewSpec()
                 .withNewTemplate()
@@ -91,7 +93,7 @@ public class ImageBuild {
                             .withImage(KANIKO_IMAGE)
                             .withArgs(
                                 "--dockerfile=/workspace/Dockerfile",
-                                "--destination=" + Environment.getImageOutputRegistry(namespace, name, imageTag),
+                                "--destination=" + Environment.getImageOutputRegistry(namespaceName, name, imageTag),
                                 "--build-arg=BASE_IMAGE=" + baseImage,
                                 "--skip-tls-verify",
                                 "-v=debug")
@@ -109,31 +111,32 @@ public class ImageBuild {
             .build();
 
         ResourceManager.getInstance().createResourceWithWait(kanikoJob);
-        JobUtils.waitForJobSuccess(name, namespace, TestConstants.GLOBAL_TIMEOUT);
+        JobUtils.waitForJobSuccess(namespaceName, name, TestConstants.GLOBAL_TIMEOUT);
     }
 
     /**
      * Build a specific image from passed Dockerfile and push it into internal registry.
-     * @param name Image name (it is also used as a name for all needed resources)
-     * @param namespace location where the build will happen
+     *
+     * @param namespaceName  location where the build will happen
+     * @param name           Image name (it is also used as a name for all needed resources)
      * @param dockerfilePath path to Dockerfile
-     * @param imageTag tag of the final image that will be pushed into internal registries
-     * @param baseImage used base image for the build
-     * @throws IOException  When reading from file - when file doesn't exist or cannot be opened
+     * @param imageTag       tag of the final image that will be pushed into internal registries
+     * @param baseImage      used base image for the build
+     * @throws IOException When reading from file - when file doesn't exist or cannot be opened
      */
-    public static void buildImageOpenshift(String name, String namespace, String dockerfilePath, String imageTag, String baseImage) throws IOException {
+    public static void buildImageOpenshift(String namespaceName, String name, String dockerfilePath, String imageTag, String baseImage) throws IOException {
         String dockerfileContent = Files.readString(Paths.get(dockerfilePath), StandardCharsets.UTF_8);
 
         BuildConfig buildConfig = new BuildConfigBuilder()
             .withNewMetadata()
                 .withName(name)
-                .withNamespace(namespace)
+                .withNamespace(namespaceName)
             .endMetadata()
             .withNewSpec()
                 .withNewOutput()
                     .withNewTo()
                         .withName(name + ":" + imageTag)
-                        .withNamespace(namespace)
+                        .withNamespace(namespaceName)
                         .withKind("ImageStreamTag")
                     .endTo()
                 .endOutput()
@@ -153,38 +156,38 @@ public class ImageBuild {
         ImageStream imageStream = new ImageStreamBuilder()
                 .withNewMetadata()
                     .withName(name)
-                    .withNamespace(namespace)
+                    .withNamespace(namespaceName)
                 .endMetadata()
                 .build();
 
         BuildRequest buildRequest = new BuildRequestBuilder()
             .withNewMetadata()
                 .withName(name)
-                .withNamespace(namespace)
+                .withNamespace(namespaceName)
             .endMetadata()
             .build();
 
         ResourceManager.getInstance().createResourceWithoutWait(imageStream);
         ResourceManager.getInstance().createResourceWithoutWait(buildConfig);
-        BuildConfigResource.buildConfigClient().inNamespace(namespace).withName(name).instantiate(buildRequest);
+        BuildConfigResource.buildConfigClient().inNamespace(namespaceName).withName(name).instantiate(buildRequest);
 
-        BuildUtils.waitForBuildComplete(name, namespace);
+        BuildUtils.waitForBuildComplete(namespaceName, name);
     }
 
     /**
      * Create config map with Dockerfile loaded by Kaniko
-     * @param namespace location of the config map
+     * @param namespaceName location of the config map
      * @param configMapName name of the config map
      * @param dockerfilePath path to the Dockerfile
      * @throws IOException  When reading from file - when file doesn't exist or cannot be opened
      */
-    private static void createDockerfileConfigMap(String namespace, String configMapName, String dockerfilePath) throws IOException {
+    private static void createDockerfileConfigMap(String namespaceName, String configMapName, String dockerfilePath) throws IOException {
         String dockerfileContent = Files.readString(Paths.get(dockerfilePath), StandardCharsets.UTF_8);
 
         ConfigMap configMap = new ConfigMapBuilder()
             .withNewMetadata()
                 .withName(configMapName)
-                .withNamespace(namespace)
+                .withNamespace(namespaceName)
             .endMetadata()
             .addToData("Dockerfile", dockerfileContent)
             .build();

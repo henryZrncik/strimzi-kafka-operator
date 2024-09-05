@@ -184,7 +184,7 @@ class RackAwarenessST extends AbstractST {
             .build());
 
         LOGGER.info("Check that KafkaConnect Pod is unschedulable");
-        KafkaConnectUtils.waitForConnectPodCondition("Unschedulable", testStorage.getNamespaceName(), invalidConnectClusterName, 30_000);
+        KafkaConnectUtils.waitForConnectPodCondition(testStorage.getNamespaceName(), "Unschedulable", invalidConnectClusterName, 30_000);
 
         KafkaConnectUtils.waitForConnectReady(testStorage.getNamespaceName(), testStorage.getClusterName());
 
@@ -214,7 +214,7 @@ class RackAwarenessST extends AbstractST {
         resourceManager.createResourceWithWait(kafkaClients.producerStrimzi(), kafkaClients.consumerStrimzi());
         ClientUtils.waitForInstantClientSuccess(testStorage);
 
-        consumeDataWithNewSinkConnector(testStorage.getClusterName(), testStorage.getClusterName(), testStorage.getTopicName(), testStorage.getNamespaceName(), testStorage.getMessageCount());
+        consumeDataWithNewSinkConnector(testStorage.getNamespaceName(), testStorage.getClusterName(), testStorage.getClusterName(), testStorage.getTopicName(), testStorage.getMessageCount());
     }
 
     /**
@@ -305,7 +305,7 @@ class RackAwarenessST extends AbstractST {
         ClientUtils.waitForInstantConsumerClientSuccess(testStorage);
     }
 
-    private void consumeDataWithNewSinkConnector(String newConnectorName, String connectClusterName, String topicName, String namespace, int msgCount) {
+    private void consumeDataWithNewSinkConnector(String namespace, String newConnectorName, String connectClusterName, String topicName, int msgCount) {
 
         LOGGER.info("Deploying Sink KafkaConnector in KafkaConnect Cluster: {}/{}", namespace, newConnectorName);
         Map<String, Object> connectorConfig = new HashMap<>();

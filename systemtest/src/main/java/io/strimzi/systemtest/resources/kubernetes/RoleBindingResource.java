@@ -44,9 +44,9 @@ public class RoleBindingResource implements ResourceType<RoleBinding> {
         return resource != null;
     }
 
-    public static void roleBinding(String yamlPath, String namespace, String clientNamespace) {
+    public static void roleBinding(String namespaceName, String clientNamespace, String yamlPath) {
         LOGGER.info("Creating RoleBinding in test case {} from {} in Namespace: {}",
-                ResourceManager.getTestContext().getDisplayName(), yamlPath, namespace);
+                ResourceManager.getTestContext().getDisplayName(), yamlPath, namespaceName);
         RoleBinding roleBinding = getRoleBindingFromYaml(yamlPath);
 
         ResourceManager.getInstance().createResourceWithWait(new RoleBindingBuilder(roleBinding)
@@ -54,7 +54,7 @@ public class RoleBindingResource implements ResourceType<RoleBinding> {
                 .withNamespace(clientNamespace)
             .endMetadata()
             .editFirstSubject()
-                .withNamespace(namespace)
+                .withNamespace(namespaceName)
             .endSubject()
             .build());
     }

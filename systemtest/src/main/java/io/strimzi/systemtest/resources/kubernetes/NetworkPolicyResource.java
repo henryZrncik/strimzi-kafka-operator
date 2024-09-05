@@ -66,7 +66,7 @@ public class NetworkPolicyResource implements ResourceType<NetworkPolicy> {
      * Method for allowing network policies for Cluster Operator
      */
 
-    public static void allowNetworkPolicySettingsForClusterOperator(String namespace) {
+    public static void allowNetworkPolicySettingsForClusterOperator(String namespaceName) {
         String clusterOperatorKind = "cluster-operator";
         LabelSelector labelSelector = new LabelSelectorBuilder()
             .addToMatchLabels(TestConstants.SCRAPER_LABEL_KEY, TestConstants.SCRAPER_LABEL_VALUE)
@@ -74,7 +74,7 @@ public class NetworkPolicyResource implements ResourceType<NetworkPolicy> {
 
         LOGGER.info("Apply NetworkPolicy access to {} from Pods with LabelSelector {}", clusterOperatorKind, labelSelector);
 
-        NetworkPolicy networkPolicy = NetworkPolicyTemplates.networkPolicyBuilder(namespace, clusterOperatorKind, labelSelector)
+        NetworkPolicy networkPolicy = NetworkPolicyTemplates.networkPolicyBuilder(namespaceName, clusterOperatorKind, labelSelector)
             .editSpec()
                 .editFirstIngress()
                     .addNewPort()
@@ -93,10 +93,10 @@ public class NetworkPolicyResource implements ResourceType<NetworkPolicy> {
         LOGGER.info("Network policy for LabelSelector {} successfully created", labelSelector);
     }
 
-    public static void allowNetworkPolicySettingsForBridgeClients(String namespace, String clientName, LabelSelector clientLabelSelector, String componentName) {
+    public static void allowNetworkPolicySettingsForBridgeClients(String namespaceName, String clientName, LabelSelector clientLabelSelector, String componentName) {
         LOGGER.info("Apply NetworkPolicy access to Kafka Bridge {} from client Pods with LabelSelector {}", componentName, clientLabelSelector);
 
-        NetworkPolicy networkPolicy = NetworkPolicyTemplates.networkPolicyBuilder(namespace, clientName, clientLabelSelector)
+        NetworkPolicy networkPolicy = NetworkPolicyTemplates.networkPolicyBuilder(namespaceName, clientName, clientLabelSelector)
             .editSpec()
                 .withNewPodSelector()
                     .addToMatchLabels(STRIMZI_KIND_LABEL, KafkaBridge.RESOURCE_KIND)
@@ -110,14 +110,14 @@ public class NetworkPolicyResource implements ResourceType<NetworkPolicy> {
         LOGGER.info("Network policy for LabelSelector {} successfully created", clientLabelSelector);
     }
 
-    public static void allowNetworkPolicySettingsForBridgeScraper(String namespace, String scraperPodName, String componentName) {
+    public static void allowNetworkPolicySettingsForBridgeScraper(String namespaceName, String scraperPodName, String componentName) {
         LabelSelector scraperLabelSelector = new LabelSelectorBuilder()
                     .addToMatchLabels(TestConstants.SCRAPER_LABEL_KEY, TestConstants.SCRAPER_LABEL_VALUE)
                     .build();
 
         LOGGER.info("Apply NetworkPolicy access to Kafka Bridge {} from scraper Pods with LabelSelector {}", componentName, scraperLabelSelector);
 
-        NetworkPolicy networkPolicy = NetworkPolicyTemplates.networkPolicyBuilder(namespace, scraperPodName, scraperLabelSelector)
+        NetworkPolicy networkPolicy = NetworkPolicyTemplates.networkPolicyBuilder(namespaceName, scraperPodName, scraperLabelSelector)
             .editSpec()
                 .withNewPodSelector()
                     .addToMatchLabels(STRIMZI_KIND_LABEL, KafkaBridge.RESOURCE_KIND)

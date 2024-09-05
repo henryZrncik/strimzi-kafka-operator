@@ -49,13 +49,13 @@ public class ClusterRoleBindingResource implements ResourceType<ClusterRoleBindi
         return resource != null;
     }
 
-    public static ClusterRoleBinding clusterRoleBinding(String yamlPath, String namespace) {
+    public static ClusterRoleBinding clusterRoleBinding(String namespaceName, String yamlPath) {
         LOGGER.info("Creating ClusterRoleBinding in test case {} from {} in Namespace: {}",
-            ResourceManager.getTestContext().getDisplayName(), yamlPath, namespace);
+            ResourceManager.getTestContext().getDisplayName(), yamlPath, namespaceName);
         ClusterRoleBinding clusterRoleBinding = getClusterRoleBindingFromYaml(yamlPath);
         clusterRoleBinding = new ClusterRoleBindingBuilder(clusterRoleBinding)
             .editFirstSubject()
-            .withNamespace(namespace)
+            .withNamespace(namespaceName)
             .endSubject().build();
 
         ResourceManager.getInstance().createResourceWithWait(clusterRoleBinding);

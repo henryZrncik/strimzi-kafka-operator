@@ -23,9 +23,9 @@ public class DrainCleanerResource implements ResourceType<Deployment> {
     }
 
     @Override
-    public Deployment get(String namespace, String name) {
-        String deploymentName = ResourceManager.kubeClient().namespace(namespace).getDeploymentNameByPrefix(name);
-        return deploymentName != null ? ResourceManager.kubeClient().getDeployment(namespace, deploymentName) : null;
+    public Deployment get(String namespaceName, String name) {
+        String deploymentName = ResourceManager.kubeClient().namespace(namespaceName).getDeploymentNameByPrefix(name);
+        return deploymentName != null ? ResourceManager.kubeClient().getDeployment(namespaceName, deploymentName) : null;
     }
 
     @Override

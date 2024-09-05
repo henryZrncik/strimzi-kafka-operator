@@ -66,8 +66,8 @@ public class KafkaTopicUtils {
 
     public static void waitUntilTopicObservationGenerationIsPresent(final String namespaceName, final String topicName) {
         LOGGER.info("Waiting for KafkaTopic: {}/{} observation generation", namespaceName, topicName);
-        waitForCondition("KafkaTopic: " + namespaceName + "/" + topicName + " observation generation",
-                namespaceName, topicName,
+        waitForCondition(namespaceName, "KafkaTopic: " + namespaceName + "/" + topicName + " observation generation",
+            topicName,
                 kafkaTopic -> kafkaTopic.getStatus().getObservedGeneration() >= 0.0,
                 TestConstants.GLOBAL_CRUISE_CONTROL_TIMEOUT);
     }
@@ -157,8 +157,8 @@ public class KafkaTopicUtils {
     }
 
     public static boolean waitForKafkaTopicStatus(String namespaceName, String topicName, Enum<?> conditionType, ConditionStatus conditionStatus) {
-        return ResourceManager.waitForResourceStatus(KafkaTopicResource.kafkaTopicClient(), KafkaTopic.RESOURCE_KIND,
-            namespaceName, topicName, conditionType, conditionStatus, ResourceOperation.getTimeoutForResourceReadiness(KafkaTopic.RESOURCE_KIND));
+        return ResourceManager.waitForResourceStatus(namespaceName, KafkaTopicResource.kafkaTopicClient(), KafkaTopic.RESOURCE_KIND,
+            topicName, conditionType, conditionStatus, ResourceOperation.getTimeoutForResourceReadiness(KafkaTopic.RESOURCE_KIND));
     }
 
     public static boolean waitForKafkaTopicReady(String namespaceName, String topicName) {
@@ -287,7 +287,7 @@ public class KafkaTopicUtils {
     public static void setFinalizersInAllTopicsToNull(String namespaceName) {
         LOGGER.info("Setting finalizers in all KafkaTopics in Namespace: {} to null", namespaceName);
         KafkaTopicResource.kafkaTopicClient().inNamespace(namespaceName).list().getItems().forEach(kafkaTopic ->
-            KafkaTopicResource.replaceTopicResourceInSpecificNamespace(kafkaTopic.getMetadata().getName(), kt -> kt.getMetadata().setFinalizers(null), namespaceName)
+            KafkaTopicResource.replaceTopicResourceInSpecificNamespace(namespaceName, kafkaTopic.getMetadata().getName(), kt -> kt.getMetadata().setFinalizers(null))
         );
     }
 
@@ -303,13 +303,13 @@ public class KafkaTopicUtils {
     /**
      * Waits for a specific condition to be met on a KafkaTopic within a namespace.
      *
-     * @param waitDescription   A human-readable description of the condition being waited on.
-     * @param namespaceName     The Kubernetes namespace in which the KafkaTopic resides.
-     * @param topicName         The name of the KafkaTopic to check.
-     * @param condition         A Predicate that takes a KafkaTopic and returns true if the condition is met.
+     * @param namespaceName   The Kubernetes namespace in which the KafkaTopic resides.
+     * @param waitDescription A human-readable description of the condition being waited on.
+     * @param topicName       The name of the KafkaTopic to check.
+     * @param condition       A Predicate that takes a KafkaTopic and returns true if the condition is met.
      */
-    private static void waitForCondition(String waitDescription, String namespaceName, String topicName,
-                                        Predicate<KafkaTopic> condition, long timeout) {
+    private static void waitForCondition(String namespaceName, String waitDescription, String topicName,
+                                         Predicate<KafkaTopic> condition, long timeout) {
         LOGGER.info("Starting wait for condition: {}", waitDescription);
         TestUtils.waitFor(waitDescription,
                 TestConstants.GLOBAL_POLL_INTERVAL, timeout,
@@ -328,8 +328,8 @@ public class KafkaTopicUtils {
      * @param targetReplicas    The target replica count that was attempted to be set.
      */
     public static void waitForReplicaChangeFailureDueToInsufficientBrokers(String namespaceName, String topicName, int targetReplicas) {
-        waitForCondition("Replica change failure due to insufficient brokers",
-                namespaceName, topicName,
+        waitForCondition(namespaceName, "Replica change failure due to insufficient brokers",
+            topicName,
                 kafkaTopic -> checkReplicaChangeFailureDueToInsufficientBrokers(kafkaTopic, targetReplicas),
                 TestConstants.CRUISE_CONTROL_TRAIN_MODEL_TIMEOUT);
     }
@@ -372,8 +372,8 @@ public class KafkaTopicUtils {
         final int[] successCounter = new int[]{0};
         final int[] totalSuccessThreshold = new int[]{10};
 
-        waitForCondition("replica change status not present",
-                namespaceName, topicName,
+        waitForCondition(namespaceName, "replica change status not present",
+            topicName,
                 kafkaTopic -> {
                     LOGGER.debug("Stability: {}/{} ", successCounter[0], totalSuccessThreshold[0]);
 
@@ -393,8 +393,8 @@ public class KafkaTopicUtils {
      * @param topicName         The name of the KafkaTopic.
      */
     public static void waitUntilReplicaChangeOngoing(String namespaceName, String topicName) {
-        waitForCondition("replicaChange of %s in 'ongoing' state".formatted(topicName),
-            namespaceName, topicName,
+        waitForCondition(namespaceName, "replicaChange of %s in 'ongoing' state".formatted(topicName),
+            topicName,
             kafkaTopic -> {
                 if (kafkaTopic != null && kafkaTopic.getStatus() != null && kafkaTopic.getStatus().getReplicasChange() != null) {
                     String replicasChangeState = kafkaTopic.getStatus().getReplicasChange().getState().toValue();
@@ -425,8 +425,8 @@ public class KafkaTopicUtils {
         final int[] successCounter = new int[]{0};
         final int[] totalSuccessThreshold = new int[]{10};
 
-        waitForCondition("resolution of replica change",
-                namespaceName, topicName,
+        waitForCondition(namespaceName, "resolution of replica change",
+            topicName,
                 kafkaTopic -> {
                     LOGGER.debug("Stability: {}/{} ", successCounter[0], totalSuccessThreshold[0]);
 

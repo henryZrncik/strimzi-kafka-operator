@@ -219,12 +219,12 @@ public class KafkaNodePoolST extends AbstractST {
         RollingUpdateUtils.waitTillComponentHasStartedRolling(testStorage.getNamespaceName(), volatilePoolLabelSelector, volatilePoolPodsSnapshot);
 
         LOGGER.info("Change role in {}/{}, from mixed to broker only resulting in revert", testStorage.getNamespaceName(), volatileRolePoolName);
-        KafkaNodePoolResource.replaceKafkaNodePoolResourceInSpecificNamespace(volatileRolePoolName, knp -> {
+        KafkaNodePoolResource.replaceKafkaNodePoolResourceInSpecificNamespace(testStorage.getNamespaceName(), volatileRolePoolName, knp -> {
             knp.getSpec().setRoles(List.of(ProcessRoles.CONTROLLER));
-        }, testStorage.getNamespaceName());
+        });
 
         LOGGER.info("Wait for warning message in Kafka {}/{}", testStorage.getNamespaceName(), testStorage.getClusterName());
-        KafkaUtils.waitUntilKafkaStatusConditionContainsMessage(testStorage.getClusterName(), testStorage.getNamespaceName(), ".*Reverting role change.*");
+        KafkaUtils.waitUntilKafkaStatusConditionContainsMessage(testStorage.getNamespaceName(), testStorage.getClusterName(), ".*Reverting role change.*");
 
         LOGGER.info("Wait for (original) Rolling Update to finish successfully");
         volatilePoolPodsSnapshot = RollingUpdateUtils.waitTillComponentHasRolled(testStorage.getNamespaceName(), volatilePoolLabelSelector, 3, volatilePoolPodsSnapshot);
@@ -239,9 +239,9 @@ public class KafkaNodePoolST extends AbstractST {
         volatilePoolPodsSnapshot = RollingUpdateUtils.waitTillComponentHasRolled(testStorage.getNamespaceName(), volatilePoolLabelSelector, 3, volatilePoolPodsSnapshot);
 
         LOGGER.info("Change role in {}/{}, from broker only to mixed", testStorage.getNamespaceName(), volatileRolePoolName);
-        KafkaNodePoolResource.replaceKafkaNodePoolResourceInSpecificNamespace(volatileRolePoolName, knp -> {
+        KafkaNodePoolResource.replaceKafkaNodePoolResourceInSpecificNamespace(testStorage.getNamespaceName(), volatileRolePoolName, knp -> {
             knp.getSpec().setRoles(List.of(ProcessRoles.CONTROLLER, ProcessRoles.BROKER));
-        }, testStorage.getNamespaceName());
+        });
         RollingUpdateUtils.waitTillComponentHasRolled(testStorage.getNamespaceName(), volatilePoolLabelSelector, 3, volatilePoolPodsSnapshot);
 
         transmitMessagesWithNewTopicAndClean(testStorage, 5);
@@ -367,9 +367,9 @@ public class KafkaNodePoolST extends AbstractST {
 
         // increase number of kafka replicas in KafkaNodePool
         LOGGER.info("Modifying KafkaNodePool: {}/{} by increasing number of Kafka replicas from '3' to '5'", testStorage.getNamespaceName(), kafkaNodePoolName);
-        KafkaNodePoolResource.replaceKafkaNodePoolResourceInSpecificNamespace(kafkaNodePoolName, kafkaNodePool -> {
+        KafkaNodePoolResource.replaceKafkaNodePoolResourceInSpecificNamespace(testStorage.getNamespaceName(), kafkaNodePoolName, kafkaNodePool -> {
             kafkaNodePool.getSpec().setReplicas(nodePoolIncreasedKafkaReplicaCount);
-        }, testStorage.getNamespaceName());
+        });
 
         StrimziPodSetUtils.waitForAllStrimziPodSetAndPodsReady(
             testStorage.getNamespaceName(),
@@ -386,7 +386,7 @@ public class KafkaNodePoolST extends AbstractST {
         ClientUtils.waitForInstantClientSuccess(testStorage);
 
         LOGGER.info("Disable KafkaNodePool in Kafka Cluster: {}/{}", testStorage.getNamespaceName(), testStorage.getClusterName());
-        KafkaResource.replaceKafkaResourceInSpecificNamespace(testStorage.getClusterName(),
+        KafkaResource.replaceKafkaResourceInSpecificNamespace(testStorage.getNamespaceName(), testStorage.getClusterName(),
             kafka -> {
                 kafka.getMetadata().getAnnotations().put(Annotations.ANNO_STRIMZI_IO_NODE_POOLS, "disabled");
                 // because Kafka CR with NodePools is missing .spec.kafka.replicas and .spec.kafka.storage, we need to
@@ -397,7 +397,7 @@ public class KafkaNodePoolST extends AbstractST {
                     .withDeleteClaim(true)
                     .build()
                 );
-            }, testStorage.getNamespaceName());
+            });
 
         StrimziPodSetUtils.waitForAllStrimziPodSetAndPodsReady(
             testStorage.getNamespaceName(),
@@ -415,12 +415,12 @@ public class KafkaNodePoolST extends AbstractST {
         ClientUtils.waitForInstantClientSuccess(testStorage);
 
         LOGGER.info("Enable KafkaNodePool in Kafka Cluster: {}/{}", testStorage.getNamespaceName(), testStorage.getClusterName());
-        KafkaResource.replaceKafkaResourceInSpecificNamespace(testStorage.getClusterName(),
+        KafkaResource.replaceKafkaResourceInSpecificNamespace(testStorage.getNamespaceName(), testStorage.getClusterName(),
             kafka -> {
                 kafka.getMetadata().getAnnotations().put(Annotations.ANNO_STRIMZI_IO_NODE_POOLS, "enabled");
                 kafka.getSpec().getKafka().setReplicas(null);
                 kafka.getSpec().getKafka().setStorage(null);
-            }, testStorage.getNamespaceName());
+            });
 
         StrimziPodSetUtils.waitForAllStrimziPodSetAndPodsReady(
             testStorage.getNamespaceName(),
